@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Text-to-Speech MP3 Downloader</title>
-    <!-- Include lamejs for MP3 encoding -->
     <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
     
     <style>
@@ -48,7 +47,7 @@
 <body>
 
     <div class="container">
-        <h1>Narrator</h1>
+        <h1> Narrator (MP3)</h1>
         
         <div class="controls">
             <select id="voiceSelect" aria-label="Select Voice">
@@ -231,7 +230,7 @@
                     this.logMsg("Conversion failed. Browser might not support decoding WebM.");
                 }
             },
-
+            
             logMsg(msg) { this.elements.log.textContent = msg; }
         };
 
