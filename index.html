@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline MP3 Narrator</title>
+    <title>Text-to-Speech MP3 Narrator</title>
+    <!-- Load LameJS for MP3 Encoding from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --text: #1e293b; --danger: #dc2626; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -37,7 +39,7 @@
 <body>
 
     <div class="container">
-        <h1>Pro Narrator (Offline)</h1>
+        <h1>Narrator</h1>
 
         <!-- 4 Voice Options -->
         <div class="voice-grid" id="voiceGrid">
@@ -47,7 +49,7 @@
             <div class="voice-option" data-voice="uk-male">🇬🇧 UK Male</div>
         </div>
 
-        <div id="textInput" contenteditable="true" placeholder="Type text here... (Works offline)"></div>
+        <div id="textInput" contenteditable="true" placeholder="Type or paste text here..."></div>
 
         <div class="button-group">
             <button id="speakBtn">Speak</button>
@@ -56,12 +58,242 @@
         <div id="log" class="log"></div>
     </div>
 
-    <!-- 
-      INLINE LAMEJS: 
-      This is the library that creates MP3s. 
-      I have pasted the code directly here so you don't need internet to load it.
-      Source: https://github.com/zhuker/lamejs
-    -->
     <script>
-    /* lamejs.min.js - version 1.2.1 - Apache 2.0 License */
-    var lamejs=function(){"use strict";var e=Object.create||function(e){function t(){}return t.prototype=e,new t},t=Object.prototype.hasOwnProperty;var n=function(e,n){this.type=e,this.target=n};function r(e){e&&(this.name=e.name,this.id=e.id,this.description=e.description,this.status=e.status,this.preserveAspectRatio=e.preserveAspectRatio,this.viewBox=e.viewBox,this.height=e.height,this.width=e.width,this.childs=e.childs,this.attrs=e.attrs,this.text=e.text,this.className=e.className)}r.prototype.e=function(e,t){var n=new r({name:e});for(var i in t)t.hasOwnProperty(i)&&(n[i]=t[i]);return this.childs||(this.childs=[]),this.childs.push(n),n},r.prototype.toString=function(){var e="";if(e+="<"+this.name,null!=this.id&&(e+=' id="'+this.id+'"'),null!=this.className&&(e+=' class="'+this.className+'"'),null!=this.width&&(e+=' width="'+this.width+'"'),null!=this.height&&(e+=' height="'+this.height+'"'),this.attrs)for(var t in this.attrs)this.attrs.hasOwnProperty(t)&&(e+=" "+t+'="'+this.attrs[t]+'"');if(this.childs&&this.childs.length>0){e+=">";for(var n=0;n<this.childs.length;n++)e+=this.childs[n].toString();e+="</"+this.name+">"}else e+="/>";return e};var i=function(e,t){var n;for(n=0;n<e.length;n++)if(e[n].id===t)return e[n];return null},a=function(e,t){var n,r,a,o;if(t)for(o=Object.keys(t),n=0;n<o.length;n++)r=o[n],(a=t[r])&&(e[r]=a)},o=function(e,t,n){if(null!=e)if(Array.isArray(e))for(var r=0;r<e.length;r++)t.call(n,e[r],r);else for(var i in e)t.call(n,e[i],i)};function s(e,t,n){this.x=e,this.y=t,this.type=n}var c=function(e){this.lines=e,this.nLines=e.length,this.bufferSize=1e6,this.buffer=new Int8Array(this.bufferSize),this.pos=0};function u(e,t,n){this.sampleRate=e,this.channels=t,this.kbps=n||128,this.gain=0,this.mpg=new Lame.MPGather,this.enc=new Lame.MPCode,this.prevBlock=new Int32Array(2),this.psfb21=new Int32Array(2),this.sfb21=new Int32Array(2)}c.prototype._write=function(e,t){if(void 0===t&&(t=0),!(this.pos+e.length>this.bufferSize))for(var n=0;n<e.length;n++)this.buffer[this.pos++]=e.charCodeAt(n)},c.prototype.writeByte=function(e){this.pos<this.bufferSize&&(this.buffer[this.pos++]=e)},c.prototype.write=function(e,t,n){null==t&&(t=0),null==n&&(n=e.length),this._write(e.substr(t,n))},c.prototype.writeString=function(e){this._write(e)},c.prototype.writeStringAt=function(e,t){},c.prototype.writeStringZeroPadded=function(e,t){this._write(e),this.pos+=t-e.length},c.prototype.writeInt16=function(e){e<0&&(e=65536+e),this.writeByte(e>>8),this.writeByte(255&e)},c.prototype.writeInt32=function(e){e<0&&(e=4294967296+e),this.writeByte(e>>24&255),this.writeByte(e>>16&255),this.writeByte(e>>8&255),this.writeByte(255&e)},c.prototype.writeInt32LE=function(e){this.writeByte(255&e),this.writeByte(e>>8&255),this.writeByte(e>>16&255),this.writeByte(e>>24&255)},c.prototype.toByteArray=function(){var e=new Uint8Array(this.pos);return e.set(this.buffer.subarray(0,this.pos)),e},c.prototype.getSize=function(){return this.pos};var l=L3Side;function h(e,t,n){var r;for(r=0;r<e.length;r++)e[r]=t+r*n}function f(e,t,n,r){var i,a,o,s,c;for(a=0,i=e;i<t;i++)o=n[i],s=o>>31,c=(o=(o<0?-o:o)*r+.5)>=2079?((o<19968?o+4096:o)-8192<<s)-1:((o=(o=(o*(o<1?1:0)!=0?o:0)+((o^(o-1))<0?o:0))+(o^(o-1))>=0?o:0)<<s)-1;return c}var d=[0,2079,4096,6042,7908,9696,11400,13056,14664,16236,17772,19280,20760,22216,23648,25056,26448,27816,29160,30488,31792,33080,34344,35592,36824,38040,39240,40432,41608,42776,43936,45088,46224,47352,48472,49584,50688,51784,52872,53960,55040,56112,57176,58240,59296,60344,61392,62432,63472,64504,65536];function m(e){var t,n;if(e>=0)return t=e%131072,n=t>>31,d[n+1+((t^n)-n>>31)+1];for(t=-e,n=t%131072,n=-n,n<0&&(n+=131072),--n;0<=d[--n];);return n}var p=[0,2079,4096,6042,7908,9696,11400,13056,14664,16236,17772,19280,20760,22216,23648,25056,26448,27816,29160,30488,31792,33080,34344,35592,36824,38040,39240,40432,41608,42776,43936,45088,46224,47352,48472,49584,50688,51784,52872,53960,55040,56112,57176,58240,59296,60344,61392,62432,63472,64504,65536],v=[0,2031,4057,6079,8096,10111,12122,14129,16132,18132,20128,22120,24108,26093,28074,30051,32025,33
+        const App = {
+            elements: {
+                textInput: document.getElementById('textInput'),
+                voiceGrid: document.getElementById('voiceGrid'),
+                speakBtn: document.getElementById('speakBtn'),
+                downloadBtn: document.getElementById('downloadBtn'),
+                log: document.getElementById('log')
+            },
+            synth: window.speechSynthesis,
+            voices: [],
+            selectedVoiceType: 'us-female',
+            mappedVoices: {},
+            mediaRecorder: null,
+            audioChunks: [],
+
+            init() {
+                if (!this.synth) { alert("TTS not supported"); return; }
+                
+                this.loadVoices();
+                this.synth.onvoiceschanged = () => this.loadVoices();
+
+                // UI Interactions
+                this.elements.voiceGrid.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('voice-option')) {
+                        document.querySelectorAll('.voice-option').forEach(el => el.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.selectedVoiceType = e.target.dataset.voice;
+                    }
+                });
+
+                this.elements.speakBtn.addEventListener('click', () => this.speak());
+                this.elements.downloadBtn.addEventListener('click', () => this.startRecording());
+            },
+
+            loadVoices() {
+                this.voices = this.synth.getVoices();
+                this.mapVoicesToCategories();
+            },
+
+            // Smart mapping to find voices
+            mapVoicesToCategories() {
+                this.mappedVoices = { 'us-female': null, 'us-male': null, 'uk-female': null, 'uk-male': null };
+                
+                this.voices.forEach(voice => {
+                    const name = voice.name.toLowerCase();
+                    const lang = voice.lang.toLowerCase();
+                    
+                    // US English Detection
+                    if (lang === 'en-us' || lang === 'en_us') {
+                        if (name.includes('female') || name.includes('zira') || name.includes('samantha') || name.includes('susan')) {
+                            this.mappedVoices['us-female'] = voice;
+                        } else if (name.includes('male') || name.includes('david') || name.includes('mark') || name.includes('alex')) {
+                            this.mappedVoices['us-male'] = voice;
+                        } else {
+                            // Fallback if gender not in name
+                            if (!this.mappedVoices['us-female']) this.mappedVoices['us-female'] = voice;
+                            if (!this.mappedVoices['us-male']) this.mappedVoices['us-male'] = voice;
+                        }
+                    }
+                    
+                    // UK English Detection
+                    if (lang === 'en-gb' || lang === 'en_gb') {
+                        if (name.includes('female') || name.includes('hazel') || name.includes('susan') || name.includes('serena')) {
+                            this.mappedVoices['uk-female'] = voice;
+                        } else if (name.includes('male') || name.includes('george') || name.includes('daniel') || name.includes('brian')) {
+                            this.mappedVoices['uk-male'] = voice;
+                        } else {
+                            if (!this.mappedVoices['uk-female']) this.mappedVoices['uk-female'] = voice;
+                            if (!this.mappedVoices['uk-male']) this.mappedVoices['uk-male'] = voice;
+                        }
+                    }
+                });
+
+                // Final Fallback: If specific countries not found, use any English voice
+                const anyEnglish = this.voices.find(v => v.lang.startsWith('en'));
+                const keys = Object.keys(this.mappedVoices);
+                keys.forEach(k => { if(!this.mappedVoices[k]) this.mappedVoices[k] = anyEnglish; });
+            },
+
+            getText() { return this.elements.textInput.innerText.trim(); },
+
+            speak() {
+                const text = this.getText();
+                if (!text) return alert("Please enter text.");
+
+                if (this.synth.speaking) {
+                    this.synth.cancel();
+                    return; 
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voice = this.mappedVoices[this.selectedVoiceType];
+                if (voice) utterance.voice = voice;
+
+                // --- HIGHLIGHTING LOGIC ---
+                const textContent = text;
+                const words = textContent.split(/\s+/); 
+                let wordIndex = 0;
+
+                utterance.onboundary = (event) => {
+                    if (event.name === 'word') {
+                        this.highlightWord(words, wordIndex);
+                        wordIndex++;
+                    }
+                };
+
+                utterance.onend = () => {
+                    this.clearHighlights();
+                };
+
+                this.synth.speak(utterance);
+            },
+
+            highlightWord(words, index) {
+                let html = "";
+                words.forEach((word, i) => {
+                    if (i === index) {
+                        html += `<span class="highlight">${word}</span> `;
+                    } else {
+                        html += word + " ";
+                    }
+                });
+                this.elements.textInput.innerHTML = html;
+            },
+
+            clearHighlights() {
+                const text = this.elements.textInput.innerText;
+                this.elements.textInput.innerHTML = text;
+            },
+
+            // --- DOWNLOAD LOGIC ---
+            async startRecording() {
+                const text = this.getText();
+                if (!text) return alert("Enter text first.");
+
+                try {
+                    this.logMsg("Step 1: Requesting audio stream...");
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                    const audioTrack = stream.getAudioTracks()[0];
+
+                    if (!audioTrack) {
+                        alert("ERROR: You must select a window/tab AND check 'Share Audio'.");
+                        stream.getTracks().forEach(t => t.stop());
+                        return;
+                    }
+
+                    this.audioChunks = [];
+                    this.mediaRecorder = new MediaRecorder(audioTrack);
+                    
+                    this.mediaRecorder.ondataavailable = e => this.audioChunks.push(e.data);
+                    
+                    this.mediaRecorder.onstop = async () => {
+                        this.logMsg("Step 2: Creating MP3 file...");
+                        const webmBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                        await this.convertToMp3(webmBlob);
+                        stream.getTracks().forEach(t => t.stop());
+                        this.elements.downloadBtn.textContent = "Save as MP3";
+                        this.elements.downloadBtn.classList.remove('recording');
+                    };
+
+                    // Start
+                    this.mediaRecorder.start();
+                    this.elements.downloadBtn.textContent = "Recording...";
+                    this.elements.downloadBtn.classList.add('recording');
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    const voice = this.mappedVoices[this.selectedVoiceType];
+                    if (voice) utterance.voice = voice;
+                    
+                    this.synth.speak(utterance);
+
+                    utterance.onend = () => {
+                        setTimeout(() => {
+                            if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                                this.mediaRecorder.stop();
+                            }
+                        }, 500);
+                    };
+
+                } catch (e) {
+                    this.logMsg("Error: " + e.message);
+                }
+            },
+
+            async convertToMp3(webmBlob) {
+                try {
+                    const arrayBuffer = await webmBlob.arrayBuffer();
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                    // LameJS Encoder
+                    const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
+                    const samples = audioBuffer.getChannelData(0);
+                    const sampleBlockSize = 1152; 
+                    const mp3Data = [];
+
+                    // Convert Float32 to Int16
+                    const samples16 = new Int16Array(samples.length);
+                    for (let i = 0; i < samples.length; i++) {
+                        let s = samples[i];
+                        s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        samples16[i] = s;
+                    }
+
+                    for (let i = 0; i < samples16.length; i += sampleBlockSize) {
+                        const sampleChunk = samples16.subarray(i, i + sampleBlockSize);
+                        const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+                        if (mp3buf.length > 0) mp3Data.push(mp3buf);
+                    }
+                    
+                    const end = mp3encoder.flush();
+                    if (end.length > 0) mp3Data.push(end);
+
+                    const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
+                    const url = URL.createObjectURL(mp3Blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'narration.mp3';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    this.logMsg("Success! MP3 Downloaded.");
+
+                } catch (err) {
+                    console.error(err);
+                    this.logMsg("Conversion failed.");
+                }
+            },
+
+            logMsg(msg) { this.elements.log.textContent = msg; }
+        };
+
+        App.init();
+    </script>
+</body>
+</html>
