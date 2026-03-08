@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech MP3 Downloader</title>
+    <!-- Include lamejs for MP3 encoding -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --text: #1e293b; --danger: #dc2626;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg); color: var(--text);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;
+        }
+        .container {
+            background: var(--surface); padding: 2rem; border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%; max-width: 600px;
+        }
+        h1 { margin-top: 0; font-size: 1.5rem; text-align: center; }
+        .controls { display: flex; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap; }
+        select, button {
+            padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;
+            font-size: 1rem; cursor: pointer;
+        }
+        select { flex-grow: 1; background: white; }
+        button { background: var(--primary); color: white; border: none; transition: background 0.2s; }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        #textInput {
+            width: 100%; height: 200px; border: 1px solid #cbd5e1;
+            border-radius: 6px; padding: 10px; font-size: 1rem;
+            line-height: 1.5; overflow-y: auto; background: white; outline: none;
+        }
+        .highlight { background-color: #fef08a; border-radius: 3px; }
+        .button-group { display: flex; gap: 10px; margin-top: 1rem; }
+        .button-group button { flex: 1; }
+        .recording { background: var(--danger); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .log { font-size: 0.8rem; color: #64748b; margin-top: 10px; text-align: center; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Narrator</h1>
+        
+        <div class="controls">
+            <select id="voiceSelect" aria-label="Select Voice">
+                <option value="" disabled selected>Loading voices...</option>
+            </select>
+        </div>
+
+        <div id="textInput" contenteditable="true" placeholder="Type or paste text here..."></div>
+
+        <div class="button-group">
+            <button id="speakBtn">Speak</button>
+            <button id="downloadBtn">Save as MP3</button>
+        </div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const App = {
+            elements: {
+                textInput: document.getElementById('textInput'),
+                voiceSelect: document.getElementById('voiceSelect'),
+                speakBtn: document.getElementById('speakBtn'),
+                downloadBtn: document.getElementById('downloadBtn'),
+                log: document.getElementById('log')
+            },
+            synth: window.speechSynthesis,
+            voices: [],
+            mediaRecorder: null,
+            audioChunks: [],
+
+            init() {
+                if (!this.synth) {
+                    alert("Sorry, your browser doesn't support Text to Speech");
+                    return;
+                }
+                this.loadVoices();
+                this.synth.onvoiceschanged = () => this.loadVoices();
+                this.elements.speakBtn.addEventListener('click', () => this.speak());
+                this.elements.downloadBtn.addEventListener('click', () => this.startRecording());
+            },
+
+            loadVoices() {
+                this.voices = this.synth.getVoices();
+                this.elements.voiceSelect.innerHTML = '';
+                if (this.voices.length === 0) {
+                    this.elements.voiceSelect.innerHTML = '<option value="">No voices</option>';
+                    return;
+                }
+                this.voices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.default) option.selected = true;
+                    this.elements.voiceSelect.appendChild(option);
+                });
+            },
+
+            getText() { return this.elements.textInput.innerText.trim(); },
+
+            speak() {
+                const text = this.getText();
+                if (!text) return alert("Enter text first.");
+                if (this.synth.speaking) { this.synth.cancel(); return; }
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                const selectedVoiceIndex = this.elements.voiceSelect.value;
+                if (this.voices[selectedVoiceIndex]) utterance.voice = this.voices[selectedVoiceIndex];
+                
+                this.synth.speak(utterance);
+            },
+
+            // --- RECORDING & MP3 CONVERSION ---
+            async startRecording() {
+                const text = this.getText();
+                if (!text) return alert("Enter text first.");
+
+                try {
+                    this.logMsg("Requesting audio capture...");
+                    // Request high quality audio capture
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                    const audioTrack = stream.getAudioTracks()[0];
+
+                    if (!audioTrack) {
+                        alert("You must check 'Share audio' to record.");
+                        stream.getTracks().forEach(t => t.stop());
+                        return;
+                    }
+
+                    // Setup Recording
+                    this.audioChunks = [];
+                    this.mediaRecorder = new MediaRecorder(audioTrack);
+                    
+                    this.mediaRecorder.ondataavailable = e => this.audioChunks.push(e.data);
+                    
+                    this.mediaRecorder.onstop = async () => {
+                        this.logMsg("Processing audio...");
+                        const webmBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                        
+                        // Convert WebM to MP3
+                        await this.convertToMp3(webmBlob);
+                        
+                        // Cleanup
+                        stream.getTracks().forEach(t => t.stop());
+                        this.elements.downloadBtn.textContent = "Save as MP3";
+                        this.elements.downloadBtn.classList.remove('recording');
+                    };
+
+                    // Start
+                    this.mediaRecorder.start();
+                    this.elements.downloadBtn.textContent = "Recording...";
+                    this.elements.downloadBtn.classList.add('recording');
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    const selectedVoiceIndex = this.elements.voiceSelect.value;
+                    if (this.voices[selectedVoiceIndex]) utterance.voice = this.voices[selectedVoiceIndex];
+                    
+                    this.synth.speak(utterance);
+
+                    utterance.onend = () => {
+                        setTimeout(() => {
+                            if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                                this.mediaRecorder.stop();
+                            }
+                        }, 500);
+                    };
+
+                } catch (e) {
+                    console.error(e);
+                    this.logMsg("Recording failed.");
+                }
+            },
+
+            async convertToMp3(webmBlob) {
+                this.logMsg("Converting to MP3 (this may take a moment)...");
+                
+                try {
+                    // 1. Decode WebM into raw AudioBuffer
+                    const arrayBuffer = await webmBlob.arrayBuffer();
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                    // 2. Encode to MP3 using lamejs
+                    const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128); // Mono, 44.1khz, 128kbps
+                    const samples = audioBuffer.getChannelData(0); // Get left channel
+                    const sampleBlockSize = 1152; 
+                    const mp3Data = [];
+
+                    // Convert Float32 to Int16 (required for MP3)
+                    const samples16 = new Int16Array(samples.length);
+                    for (let i = 0; i < samples.length; i++) {
+                        let s = samples[i];
+                        s = s < 0 ? s * 0x8000 : s * 0x7FFF; // Convert to 16-bit
+                        samples16[i] = s;
+                    }
+
+                    for (let i = 0; i < samples16.length; i += sampleBlockSize) {
+                        const sampleChunk = samples16.subarray(i, i + sampleBlockSize);
+                        const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+                        if (mp3buf.length > 0) mp3Data.push(mp3buf);
+                    }
+                    
+                    const end = mp3encoder.flush();
+                    if (end.length > 0) mp3Data.push(end);
+
+                    // 3. Download MP3
+                    const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
+                    const url = URL.createObjectURL(mp3Blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'narration.mp3';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    this.logMsg("MP3 Downloaded!");
+
+                } catch (err) {
+                    console.error(err);
+                    this.logMsg("Conversion failed. Browser might not support decoding WebM.");
+                }
+            },
+
+            logMsg(msg) { this.elements.log.textContent = msg; }
+        };
+
+        App.init();
+    </script>
+</body>
+</html>
